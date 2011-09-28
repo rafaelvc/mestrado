@@ -1,0 +1,77 @@
+diff -p -up ./PACC/Math/Matrix.cpp.orig ./PACC/Math/Matrix.cpp
+--- ./PACC/Math/Matrix.cpp.orig	2009-04-23 16:22:19.000000000 -0300
++++ ./PACC/Math/Matrix.cpp	2009-04-23 16:22:46.000000000 -0300
+@@ -40,6 +40,7 @@
+ #include <stdexcept>
+ #include <iomanip>
+ #include <cmath>
++#include <limits.h>
+ 
+ using namespace std;
+ using namespace PACC;
+diff -p -up ./PACC/Math/Vector.hpp.orig ./PACC/Math/Vector.hpp
+--- ./PACC/Math/Vector.hpp.orig	2009-04-23 16:21:37.000000000 -0300
++++ ./PACC/Math/Vector.hpp	2009-04-23 16:21:54.000000000 -0300
+@@ -42,6 +42,7 @@
+ #include "XML/Document.hpp"
+ #include "XML/Streamer.hpp"
+ #include <cmath>
++#include <algorithm>
+ 
+ namespace PACC {
+ 	
+diff -p -up ./PACC/Socket/Cafe.cpp.orig ./PACC/Socket/Cafe.cpp
+--- ./PACC/Socket/Cafe.cpp.orig	2009-04-23 16:24:25.000000000 -0300
++++ ./PACC/Socket/Cafe.cpp	2009-04-23 16:24:52.000000000 -0300
+@@ -46,6 +46,7 @@ namespace PACC {
+ #else
+ ///////////// specifics for unixes /////////////
+ #include <netinet/in.h>
++#include <string.h>
+ namespace PACC {
+ 	typedef uint32_t UInt32;
+ }
+diff -p -up ./PACC/Threading/Thread.cpp.orig ./PACC/Threading/Thread.cpp
+--- ./PACC/Threading/Thread.cpp.orig	2009-04-23 16:23:31.000000000 -0300
++++ ./PACC/Threading/Thread.cpp	2009-04-23 16:24:01.000000000 -0300
+@@ -48,6 +48,7 @@ struct ThreadStruct {
+ #include <pthread.h>
+ #include <unistd.h>
+ #include <sys/errno.h>
++#include <stdlib.h>
+ #define ErrNo errno // descriptor of last error
+ typedef pthread_t ThreadStruct;
+ #endif
+diff -p -up ./PACC/Util/SignalHandler.cpp.orig ./PACC/Util/SignalHandler.cpp
+--- ./PACC/Util/SignalHandler.cpp.orig	2009-04-23 16:18:42.000000000 -0300
++++ ./PACC/Util/SignalHandler.cpp	2009-04-23 16:19:21.000000000 -0300
+@@ -37,6 +37,7 @@
+ #include "Util/Assert.hpp"
+ #include <signal.h>
+ #include <stdexcept>
++#include <stdlib.h>
+ 
+ using namespace std;
+ using namespace PACC;
+diff -p -up ./PACC/XML/Node.cpp.orig ./PACC/XML/Node.cpp
+--- ./PACC/XML/Node.cpp.orig	2009-04-23 16:20:23.000000000 -0300
++++ ./PACC/XML/Node.cpp	2009-04-23 16:20:37.000000000 -0300
+@@ -39,6 +39,7 @@
+ #include "Util/Assert.hpp"
+ #include <sstream>
+ #include <stdexcept>
++#include <string.h>
+ 
+ using namespace std;
+ using namespace PACC;
+diff -p -up ./PACC/Util/Tokenizer.cpp.orig ./PACC/Util/Tokenizer.cpp
+--- ./PACC/Util/Tokenizer.cpp.orig	2009-04-23 16:49:53.000000000 -0300
++++ ./PACC/Util/Tokenizer.cpp	2009-04-23 16:50:11.000000000 -0300
+@@ -36,6 +36,7 @@
+ #include "Util/Tokenizer.hpp"
+ #include "Util/Assert.hpp"
+ #include <stdexcept>
++#include <string.h>
+ 
+ using namespace std;
+ using namespace PACC;
