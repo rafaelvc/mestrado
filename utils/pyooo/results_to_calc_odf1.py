@@ -1,0 +1,286 @@
+# python results_to_calc_odf.py -d /media/SAMSUNG/Artigo_DS2011/results_andras/results_ballb_dist1curv05/ -o /media/SAMSUNG/Artigo_DS2011/results_andras/results -b ballb -e Dist1.0Curv0.5
+
+from odf.opendocument import OpenDocumentSpreadsheet, load
+from odf.text import P
+from odf.table import Table, TableColumn, TableRow, TableCell
+from math import sqrt 
+import sys
+import copy
+import getopt 
+import pdb
+
+PWENC = "utf-8"
+rodadas = 30 
+folds = 5
+
+def auc(points): 
+    A = 0.0
+    for i in xrange(0,len(points)-1): 
+        x1 = (points[i])[0]
+        y1 = (points[i])[1]
+        x2 = (points[i+1])[0]
+        y2 = (points[i+1])[1]
+        if y1 < y2: 
+            A += ((x2-x1)*y1 + ((x2-x1)*(y2-y1))/2)
+        else:
+            A += ((x2-x1)*y2 + ((x2-x1)*(y1-y2))/2)
+    return A 
+
+def desvio(media, valores):
+
+    total = 0.0
+    nr_val = len(valores)
+    for x in valores:
+        x_ = media - x
+        x_ *= x_
+        total += x_
+    return sqrt(total/(1.0*(nr_val-1)))
+
+
+def make_body(dir,desc): 
+
+    tr_blank = TableRow()
+    tr = TableRow()
+
+    tr_acc  = TableRow()
+    tr_tpr  = TableRow()
+    tr_tnr  = TableRow()
+    tr_auc  = TableRow()
+
+    tr_desvio_acc  = TableRow()
+    tr_desvio_tpr  = TableRow()
+    tr_desvio_tnr  = TableRow()
+    tr_desvio_auc = TableRow()
+
+    cell = TableCell(valuetype="string", value=desc)
+    cell.addElement(P(text=unicode(desc,PWENC)))
+    tr_blank.addElement(cell)
+
+    cell = TableCell(valuetype="string", value="")
+    cell.addElement(P(text=unicode("",PWENC)))
+    tr.addElement(cell)
+
+    cell = TableCell(valuetype="string", value="ACC:")
+    cell.addElement(P(text=unicode("ACC:",PWENC)))
+    tr_acc.addElement(cell)
+    tr_desvio_acc.addElement(copy.deepcopy(cell))
+
+    cell = TableCell(valuetype="string", value="TPR:")
+    cell.addElement(P(text=unicode("TPR:",PWENC)))
+    tr_tpr.addElement(cell)
+    tr_desvio_tpr.addElement(copy.deepcopy(cell))
+
+    cell = TableCell(valuetype="string", value="TNR:")
+    cell.addElement(P(text=unicode("TNR:",PWENC)))
+    tr_tnr.addElement(cell)
+    tr_desvio_tnr.addElement(copy.deepcopy(cell))
+
+    cell = TableCell(valuetype="string", value="AUC:")
+    cell.addElement(P(text=unicode("AUC:",PWENC)))
+    tr_auc.addElement(cell)
+    tr_desvio_auc.addElement(copy.deepcopy(cell))
+
+
+    for i in range(1,rodadas+1):
+
+        path = dir + "/results."  + str(i) + "/"
+
+        # table.addElement(TableColumn())
+
+        cell = TableCell(valuetype="float", value=str(i))
+        cell.addElement(P(text=unicode(str(i),PWENC)))
+        tr.addElement(cell)
+
+        acc,tpr,tnr,auc_total = 0.0,0.0,0.0,0.0
+        acc_,tpr_,tnr_,auc_total_ = [],[],[],[]
+        for i in range(1,folds+1): 
+
+            try:
+                gp_out,classes = [],[]
+                fold_file = path + "result_fold_" + str(i) + ".txt"
+                #fold_file = path + "result_fold.txt"
+                fd = open(fold_file)
+                for line in fd: 		        
+                    item = line.split(":")
+                    if len(item) == 1:
+                        continue
+                    if item[0].strip() == "Accuracy":
+                        x = float(item[1].strip())
+                        acc += x
+                        acc_.append(x)
+                    elif item[0].strip() == "TP/P":
+                        x = float(item[1].strip())
+                        tpr += x
+                        tpr_.append(x)
+                        print tpr
+                    elif item[0].strip() == "TN/N":
+                        x =  float(item[1].strip())
+                        tnr +=  x
+                        tnr_.append(x)
+                    elif item[0].strip() == "GPOUT":
+                        gp_out = [ float(g) for g in item[1][1:].split(",") ]
+                    elif item[0].strip() == "CLASS":
+                        classes = [ int(c) for c in item[1][1:].split(",") ] 
+
+                if gp_out and classes:
+                    rates = [] 
+                    for gpo in gp_out:
+                        # tpr = fpr = 0.0
+                        tp = tn = fn = fp = 0.0 	
+                        for i in range(0, len(gp_out)):
+                            if gp_out[i] >= gpo and classes[i] == 1:
+                                tp += 1.0 
+                            elif gp_out[i] < gpo and classes[i] == 0:
+                                tn += 1.0
+                            elif gp_out[i] >= gpo and classes[i] == 0:
+                                fp += 1.0
+                            elif gp_out[i] < gpo and classes[i] == 1:
+                                fn += 1.0
+                        # tpr=tp/(tp + fn)  
+                        # fpr=fp/(tn + fp)  
+                        rates.append([fp/(tn + fp), tp/(tp + fn)])	
+                    rates.sort()
+                    x = auc(rates)
+                    auc_total += x
+                    auc_total_.append(x)
+                    # pdb.set_trace()
+                fd.close()
+            except:
+                # pass
+                print "File not found? (%s)" % fold_file 
+                sys.exit(2)	
+
+        media_acc = acc / (1.0 * folds)
+        media_tpr = tpr / (1.0 * folds)
+        media_tnr = tnr / (1.0 * folds)
+        media_auc = auc_total / (1.0 * folds)
+
+        # desvio_acc = desvio(media_acc, acc_)
+        # desvio_tpr = desvio(media_tpr, tpr_)
+        # desvio_tnr = desvio(media_tnr, tnr_)
+        # desvio_auc = desvio(media_auc, auc_total_)
+
+        desvio_acc = 0 
+        desvio_tpr = 0 
+        desvio_tnr = 0
+        desvio_auc = 0
+
+        # media
+        cell = TableCell(valuetype="float", value=str(media_acc))
+        cell.addElement(P(text=unicode(str(media_acc),PWENC)))
+        tr_acc.addElement(cell)
+
+        cell = TableCell(valuetype="float", value=str(media_tpr))
+        cell.addElement(P(text=unicode(str(media_tpr),PWENC)))
+        tr_tpr.addElement(cell)
+
+        cell = TableCell(valuetype="float", value=str(media_tnr))
+        cell.addElement(P(text=unicode(str(media_tnr),PWENC)))
+        tr_tnr.addElement(cell)
+
+        cell = TableCell(valuetype="float", value=str(media_auc))
+        cell.addElement(P(text=unicode(str(media_auc),PWENC)))
+        tr_auc.addElement(cell)
+
+        # desvio
+        cell = TableCell(valuetype="float", value=str(desvio_acc))
+        cell.addElement(P(text=unicode(str(desvio_acc),PWENC)))
+        tr_desvio_acc.addElement(cell)
+
+        cell = TableCell(valuetype="float", value=str(desvio_tpr))
+        cell.addElement(P(text=unicode(str(desvio_tpr),PWENC)))
+        tr_desvio_tpr.addElement(cell)
+
+        cell = TableCell(valuetype="float", value=str(desvio_tnr))
+        cell.addElement(P(text=unicode(str(desvio_tnr),PWENC)))
+        tr_desvio_tnr.addElement(cell)
+
+        cell = TableCell(valuetype="float", value=str(desvio_auc))
+        cell.addElement(P(text=unicode(str(desvio_auc),PWENC)))
+        tr_desvio_auc.addElement(cell)
+
+
+    table_media.addElement(tr_blank)
+    table_media.addElement(tr)
+    table_media.addElement(tr_acc)
+    table_media.addElement(tr_tpr)
+    table_media.addElement(tr_tnr)
+    table_media.addElement(tr_auc)
+
+    table_desvio.addElement(copy.deepcopy(tr_blank))
+    table_desvio.addElement(copy.deepcopy(tr))
+    table_desvio.addElement(tr_desvio_acc)
+    table_desvio.addElement(tr_desvio_tpr)
+    table_desvio.addElement(tr_desvio_tnr)
+    table_desvio.addElement(tr_desvio_auc)
+
+
+def usage():
+    sys.stderr.write("Usage: %s [-d|--dir=] path_to_results [-u|--update] [-o|--output=] ods outpu file [-b|--base=] database [-e|--desc=] description \n" % sys.argv[0])
+
+
+if __name__ == '__main__': 
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "d:uo:b:e:", ["dir=","update","output=","base=","desc="])
+    except getopt.GetoptError:
+	    print opts
+	    print "aqui"
+	    usage()
+	    sys.exit(2)
+
+    upd = False 
+    out_file = ""
+    db_name  = ""
+    desc     = ""
+
+    for o, a in opts: 
+        if o in ("-d","--dir"): 
+            dir = a
+        elif o in ("-u","--update"):
+            upd = True
+        elif o in ("-o","--output"):
+            out_file = a 
+        elif o in ("-b","--base"):
+            db_name = a 
+        elif o in ("-e","--desc"):
+			desc = a 
+
+
+    if not out_file or not db_name:
+        print out_file 
+        print db_name 
+        print "aqui!"
+        usage()
+        sys.exit(2)
+
+    if upd: 
+        table_media = None
+        table_desvio = None
+        try: 
+            doc = load(out_file + ".ods")
+        except: 
+            print "File not found? (%s)" % (out_file + ".ods")
+            sys.exit(2)
+        for sheet in doc.getElementsByType(Table)[:]:
+            if sheet.attributes['table:name'] == db_name + "_media":
+                table_media = sheet 
+            if sheet.attributes['table:name'] == db_name + "_desvio": 
+                table_desvio = sheet 
+        if not (table_media and table_desvio):
+            table_media = Table(name=db_name + "_media")
+            table_desvio = Table(name=db_name + "_desvio")
+            make_body(dir,desc)
+            doc.spreadsheet.addElement(table_media)
+            doc.spreadsheet.addElement(table_desvio)
+        else:
+            make_body(dir,desc)
+        doc.save(out_file, True)
+    else: 
+        doc = OpenDocumentSpreadsheet()
+        table_media = Table(name=db_name + "_media")
+        table_desvio = Table(name=db_name + "_desvio")
+        make_body(dir,desc)
+        doc.spreadsheet.addElement(table_media)
+        doc.spreadsheet.addElement(table_desvio)
+        doc.save(out_file, True)
